@@ -1,0 +1,666 @@
+ML Codes-
+
+1. Uber Ride *****************************************************************
+------
+#Importing the required libraries
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings('ignore')
+------
+
+#importing the dataset
+df = pd.read_csv("uber.csv")
+-------
+
+df.head()
+------
+
+df.info()     #To get the required information of the dataset
+------
+
+df.columns #TO get number of columns in the dataset
+------
+
+df = df.drop(['Unnamed: 0', 'key'], axis= 1) #To drop unnamed column as it isn't required
+------
+
+df.shape #To get the total (Rows,Columns)
+------
+
+df.dtypes #To get the type of each column
+------
+
+df.pickup_datetime = pd.to_datetime(df.pickup_datetime)
+------
+
+df.dtypes
+------
+
+df.isnull().sum()
+------
+
+df['dropoff_latitude'].fillna(value=df['dropoff_latitude'].mean(),inplace = True)
+df['dropoff_longitude'].fillna(value=df['dropoff_longitude'].median(),inplace = True)
+------
+
+df.isnull().sum()
+------
+
+df= df.assign(hour = df.pickup_datetime.dt.hour,
+ day= df.pickup_datetime.dt.day,
+ month = df.pickup_datetime.dt.month,
+ year = df.pickup_datetime.dt.year,
+ dayofweek = df.pickup_datetime.dt.dayofweek)
+------
+
+from math import *
+# function to calculate the travel distance from the longitudes and latitudes
+def distance_transform(longitude1, latitude1, longitude2, latitude2):
+ travel_dist = []
+
+ for pos in range(len(longitude1)):
+    long1,lati1,long2,lati2 = map(radians,[longitude1[pos],latitude1[pos],longitude2[pos],latitude2[pos]])
+    dist_long = long2 - long1
+    dist_lati = lati2 - lati1
+    a = sin(dist_lati/2)**2 + cos(lati1) * cos(lati2) * sin(dist_long/2)**2
+    c = 2 * asin(sqrt(a))*6371
+    travel_dist.append(c)
+
+ return travel_dist
+ ------
+
+ df['dist_travel_km'] = distance_transform(df['pickup_longitude'].to_numpy(),
+ df['pickup_latitude'].to_numpy(),
+ df['dropoff_longitude'].to_numpy(),
+ df['dropoff_latitude'].to_numpy()
+ )
+ -------------
+
+ df.plot(kind = "box",subplots = True,layout = (7,2),figsize=(15,20)) #Boxplot to check the outliers
+ ------------
+
+ #Using the InterQuartile Range to fill the values
+def remove_outlier(df1 , col):
+    Q1 = df1[col].quantile(0.25)
+    Q3 = df1[col].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_whisker = Q1-1.5*IQR
+    upper_whisker = Q3+1.5*IQR
+    df[col] = np.clip(df1[col] , lower_whisker , upper_whisker)
+    return df1
+def treat_outliers_all(df1 , col_list):
+    for c in col_list:
+        df1 = remove_outlier(df , c)
+        return df1
+----------------
+
+df = treat_outliers_all(df , df.iloc[: , 0::])
+df.plot(kind = "box",subplots = True,layout = (7,2),figsize=(15,20)) #Boxplot shows that dataset is free from outliers
+--------------------
+
+#Uber doesn't travel over 130 kms so minimize the distance
+df= df.loc[(df.dist_travel_km >= 1) | (df.dist_travel_km <= 130)]
+print("Remaining observastions in the dataset:", df.shape)
+-------------------
+
+#Finding inccorect latitude (Less than or greater than 90) and longitude (greater than or less than 180)
+incorrect_coordinates = df.loc[(df.pickup_latitude > 90) |(df.pickup_latitude < -90) |
+ (df.dropoff_latitude > 90) |(df.dropoff_latitude < -90) |
+ (df.pickup_longitude > 180) |(df.pickup_longitude < -180) |
+ (df.dropoff_longitude > 90) |(df.dropoff_longitude < -90)
+ ]
+---------------------
+
+df.drop(incorrect_coordinates, inplace = True, errors = 'ignore')
+-------------------
+
+df.isnull().sum()
+-------------
+
+sns.heatmap(df.isnull()) #Free for null values
+------------
+
+corr = df.corr() #Function to find the correlation
+corr
+--------------
+
+fig,axis = plt.subplots(figsize = (10,6))
+sns.heatmap(df.corr(),annot = True) #Correlation Heatmap (Light values means highly correlated)
+-------------
+
+x = df[['pickup_longitude','pickup_latitude','dropoff_longitude','dropoff_latitude','passenger_count','hour','day','month',
+        'year','dayofweek','dist_travel_km']]
+--------------
+
+y = df['fare_amount']
+-----------
+
+from sklearn.model_selection import train_test_split
+X_train,X_test,y_train,y_test = train_test_split(x,y,test_size = 0.33)
+-----------
+
+from sklearn.linear_model import LinearRegression
+regression = LinearRegression()
+----------
+
+regression.fit(X_train,y_train)  #for linear regression
+--------------
+
+regression.intercept_ #To find the linear intercept
+------------
+
+regression.coef_ #To find the linear coeeficient
+--------------
+
+prediction = regression.predict(X_test) #To predict the target values
+print(prediction)
+---------------
+
+y_test
+-------------
+
+from sklearn.metrics import r2_score  #metrics evaluation using r2,RMS,RMSE
+------------
+
+r2_score(y_test,prediction)
+-------------
+
+from sklearn.metrics import mean_squared_error
+-----------
+
+MSE = mean_squared_error(y_test,prediction)
+MSE
+-------------
+
+RMSE = np.sqrt(MSE)
+RMSE
+--------------
+
+from sklearn.ensemble import RandomForestRegressor  #random forest regression
+-------------
+
+rf = RandomForestRegressor(n_estimators=100) #Here n_estimators means number of trees you want to build before making the prediction
+------------
+
+rf.fit(X_train,y_train)
+------------
+
+y_pred = rf.predict(X_test)
+y_pred
+--------------
+
+R2_Random = r2_score(y_test,y_pred)
+R2_Random
+#metrics evaluation for random forest
+--------------
+
+MSE_Random = mean_squared_error(y_test,y_pred)
+MSE_Random
+--------------
+
+RMSE_Random = np.sqrt(MSE_Random)
+RMSE_Random
+--------------
+
+
+2. Emails **************************************************************
+--------------
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+import warnings
+warnings.filterwarnings('ignore')
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+from sklearn import metrics
+-------------
+
+df=pd.read_csv('emails.csv')
+-----------
+
+df.head()
+------------
+
+df.columns
+--------
+
+df.isnull().sum()
+-------
+
+df.dropna(inplace = True)
+---------
+
+df.drop(['Email No.'],axis=1,inplace=True)
+X = df.drop(['Prediction'],axis = 1)
+y = df['Prediction']
+----------
+
+from sklearn.preprocessing import scale
+X = scale(X)
+# split into train and test
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 42)
+------------
+
+from sklearn.neighbors import KNeighborsClassifier
+knn = KNeighborsClassifier(n_neighbors=7)
+knn.fit(X_train, y_train)
+y_pred = knn.predict(X_test)
+#KNN classifier
+----------
+
+print("Prediction",y_pred)
+---------
+
+print("KNN accuracy = ",metrics.accuracy_score(y_test,y_pred))
+---------
+
+print("Confusion matrix",metrics.confusion_matrix(y_test,y_pred))
+----------
+
+# cost C = 1
+model = SVC(C = 1)
+# fit
+model.fit(X_train, y_train)
+# predict
+y_pred = model.predict(X_test)
+#SVM Classifier
+--------
+
+metrics.confusion_matrix(y_true=y_test, y_pred=y_pred)
+-------
+
+print("SVM accuracy = ",metrics.accuracy_score(y_test,y_pred))
+---------
+
+3. Bank***********************************************************
+------
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt #Importing the libraries
+------
+
+df = pd.read_csv("Churn_Modelling.csv")
+------
+
+df.head()
+--------
+
+df.shape
+-----
+
+df.describe()
+------
+
+df.isnull()
+---------
+
+df.isnull().sum()
+----
+
+df.info()
+-----
+
+df.dtypes
+----------
+
+df.columns
+------
+
+df = df.drop(['RowNumber', 'Surname', 'CustomerId'], axis= 1) #Dropping the unnecessary columns
+----------
+
+df.head()
+-------
+
+def visualization(x, y, xlabel):
+    plt.figure(figsize=(10,5))
+    plt.hist([x, y], color=['red', 'green'], label = ['exit', 'not_exit'])
+    plt.xlabel(xlabel,fontsize=20)
+    plt.ylabel("No. of customers", fontsize=20)
+    plt.legend()
+#Visualization
+----------
+
+df_churn_exited = df[df['Exited']==1]['Tenure']
+df_churn_not_exited = df[df['Exited']==0]['Tenure']
+--------
+
+visualization(df_churn_exited, df_churn_not_exited, "Tenure")
+-------
+
+df_churn_exited2 = df[df['Exited']==1]['Age']
+df_churn_not_exited2 = df[df['Exited']==0]['Age']
+---------
+
+visualization(df_churn_exited2, df_churn_not_exited2, "Age")
+--------
+
+X = df[['CreditScore','Gender','Age','Tenure','Balance','NumOfProducts','HasCrCard','IsActiveMember','EstimatedSalary']]
+states = pd.get_dummies(df['Geography'],drop_first = True)
+gender = pd.get_dummies(df['Gender'],drop_first = True)
+#converting the categorical variables
+---------
+
+df = pd.concat([df,gender,states], axis = 1)
+------
+
+ df.head()
+ #splitting the training and testing dataset
+ ---------
+
+X = df[['CreditScore','Age','Tenure','Balance','NumOfProducts','HasCrCard','IsActiveMember','EstimatedSalary','Male',
+        'Germany','Spain']]
+-----------
+
+y = df['Exited']
+-------
+
+from sklearn.model_selection import train_test_split
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size = 0.30)
+--------------
+
+from sklearn.preprocessing import StandardScaler
+sc = StandardScaler()
+#normalizing the values with mean as 0 and Standard Deviation as 1
+-----------
+
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+---------
+
+X_train
+---------
+
+X_test
+-----------
+
+import keras
+#building the classifier model using Keras 
+#Keras is the wrapper on the top of tenserflow
+#Can use Tenserflow as well but won't be able to understand the errors initially. 
+------------
+
+from keras.models import Sequential #To create sequential neural network
+from keras.layers import Dense #To create hidden layers
+-------------------
+
+classifier = Sequential()
+------------
+
+ #To add the layers
+#Dense helps to contruct the neurons
+#Input Dimension means we have 11 features
+# Units is to create the hidden layers
+#Uniform helps to distribute the weight uniformly
+classifier.add(Dense(activation = "relu",input_dim = 11,units = 6,kernel_initializer = "uniform"))
+------------
+
+classifier.add(Dense(activation = "relu",units = 6,kernel_initializer = "uniform")) #Adding second hidden layers
+----------
+
+classifier.add(Dense(activation = "sigmoid",units = 1,kernel_initializer = "uniform")) #Final neuron will be having sigmoid function
+-----------
+
+classifier.compile(optimizer="adam",loss = 'binary_crossentropy',metrics = ['accuracy']) #To compile the Artificial Neural Network. Ussed Binary crossentropy as we just have only two output
+-----------
+
+classifier.summary() #3 layers created. 6 neurons in 1st,6neurons in 2nd layer and 1 neuron in last
+----------
+
+classifier.fit(X_train,y_train,batch_size=10,epochs=50) #Fitting the ANN to training dataset
+-------------
+
+y_pred =classifier.predict(X_test)
+y_pred = (y_pred > 0.5) #Predicting the result
+-----------
+
+from sklearn.metrics import confusion_matrix,accuracy_score,classification_report
+---------
+
+cm = confusion_matrix(y_test,y_pred)
+------
+
+cm
+--------
+
+accuracy = accuracy_score(y_test,y_pred)
+-------
+
+accuracy
+---------
+
+plt.figure(figsize = (10,7))
+sns.heatmap(cm,annot = True)
+plt.xlabel('Predicted')
+plt.ylabel('Truth')
+-----------
+
+print(classification_report(y_test,y_pred))
+------
+
+4. Gradient Descent ************************************************************
+------------
+
+import numpy as np
+import matplotlib.pyplot as plt
+-------
+
+def f(x):
+  return (x+3)**2
+
+def df(x):
+  return 2*x + 6
+  ----------
+
+  def gradient_descent(initial_x, learning_rate, num_iterations):
+  x = initial_x
+  x_history = [x]
+  for i in range(num_iterations):
+    gradient = df(x)
+    x = x - learning_rate * gradient
+    x_history.append(x)
+  return x, x_history
+  -----------
+
+  num_iterations = 50
+
+# Pass num_iterations to the gradient_descent() function
+x, x_history = gradient_descent(initial_x=2, learning_rate=0.1, num_iterations=num_iterations)
+
+print("Local minimum: {:.2f}".format(x))
+
+# Create a range of x values to plot
+x_vals = np.linspace(-1, 5, 100)
+-----------
+
+# Plot the function f(x)
+plt.plot(x_vals, f(x_vals))
+
+# Plot the values of x at each iteration
+plt.plot(x_history, f(np.array(x_history)), 'rx')
+------------
+
+# Label the axes and add a title
+plt.xlabel('x')
+plt.ylabel('f(x)')
+plt.title('Gradient Descent')
+
+# Show the plot
+plt.show()
+------------
+
+5. K-means Clustering ***********************************************************
+-----------
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings('ignore')
+#Importing the required libraries.
+----------
+
+from sklearn.cluster import KMeans, k_means #For clustering
+from sklearn.decomposition import PCA #Linear Dimensionality reduction.
+---------
+
+df = pd.read_csv("sales_data_sample.csv" ,encoding="ISO-8859-1") #Loading the dataset.
+-------
+
+df.head()
+#preprocessing
+----------
+
+df.shape
+--------
+
+df.describe()
+----------
+
+df.info()
+--------
+
+df.isnull().sum()
+---------
+
+df.dtypes
+-----------
+
+df_drop = ['ADDRESSLINE1', 'ADDRESSLINE2', 'STATUS','POSTALCODE', 'CITY', 'TERRITORY', 'PHONE', 'STATE', 'CONTACTFIRSTNAME', 
+           'CONTACTLASTNAME', 'CUSTOMERNAME', 'ORDERNUMBER']
+df = df.drop(df_drop, axis=1) #Dropping the categorical uneccessary columns along with columns having null values. Can't fill the null values are there are alot of null values.
+------------
+
+df.isnull().sum()
+---------
+
+df.dtypes
+----------
+
+#checking the categorical columns 
+df['COUNTRY'].unique()
+--------
+
+df['PRODUCTLINE'].unique()
+----------
+
+df['DEALSIZE'].unique()
+--------
+
+productline = pd.get_dummies(df['PRODUCTLINE']) #Converting the categorical columns.
+Dealsize = pd.get_dummies(df['DEALSIZE'])
+--------
+
+df = pd.concat([df,productline,Dealsize], axis = 1)
+-----------
+
+df_drop = ['COUNTRY','PRODUCTLINE','DEALSIZE'] #Dropping Country too as there are alot of countries.
+df = df.drop(df_drop, axis=1)
+---------
+
+df['PRODUCTCODE'] = pd.Categorical(df['PRODUCTCODE']).codes #Converting the datatype.
+---------
+
+df.drop('ORDERDATE', axis=1, inplace=True) #Dropping the Orderdate as Month is already included.
+----------
+
+df.dtypes #All the datatypes are converted into numeric
+---------
+
+#plotting the elbow plot to determine the number of clusters
+distortions = [] # Within Cluster Sum of Squares from the centroid
+K = range(1,10)
+for k in K:
+    kmeanModel = KMeans(n_clusters=k)
+    kmeanModel.fit(df)
+    distortions.append(kmeanModel.inertia_) #Appeding the intertia to the Distortions 
+---------------
+
+plt.figure(figsize=(16,8))
+plt.plot(K, distortions, 'bx-')
+plt.xlabel('k')
+plt.ylabel('Distortion')
+plt.title('The Elbow Method showing the optimal k')
+plt.show()
+-------------
+
+### As the number of k increases Inertia decreases. 
+### Observations: A Elbow can be observed at 3 and after that the curve decreases gradually
+X_train = df.values #Returns a numpy array.
+----------
+
+X_train.shape
+------
+
+model = KMeans(n_clusters=3,random_state=2) #Number of cluster = 3
+model = model.fit(X_train) #Fitting the values to create a model.
+predictions = model.predict(X_train) #Predicting the cluster values (0,1,or 2)
+------------
+
+unique,counts = np.unique(predictions,return_counts=True)
+----------
+
+counts = counts.reshape(1,3)
+---------
+
+counts_df = pd.DataFrame(counts,columns=['Cluster1','Cluster2','Cluster3'])
+----------
+
+counts_df.head()
+-------
+
+###Visualization
+pca = PCA(n_components=2) #Converting all the features into 2 columns to make it easy to visualize using Principal Component Analysis.
+---------
+
+reduced_X = pd.DataFrame(pca.fit_transform(X_train),columns=['PCA1','PCA2']) #Creating a DataFrame.
+-----------
+
+reduced_X.head()
+---------
+
+#Plotting the normal Scatter Plot
+plt.figure(figsize=(14,10))
+plt.scatter(reduced_X['PCA1'],reduced_X['PCA2'])
+------------
+
+model.cluster_centers_ #Finding the centriods. (3 Centriods in total. Each Array contains a centroids for particular feature )
+-----------
+
+reduced_centers = pca.transform(model.cluster_centers_) #Transforming the centroids into 3 in x and y coordinates
+---------------
+
+reduced_centers
+------------
+
+plt.figure(figsize=(14,10))
+plt.scatter(reduced_X['PCA1'],reduced_X['PCA2'])
+plt.scatter(reduced_centers[:,0],reduced_centers[:,1],color='black',marker='x',s=300) #Plotting the centriods
+--------------
+
+reduced_X['Clusters'] = predictions #Adding the Clusters to the reduced dataframe.
+------------
+
+reduced_X.head()
+-----------
+
+#Plotting the clusters
+plt.figure(figsize=(14,10))
+# taking the cluster number and first column taking the same cluster number and second column Assigning the color
+plt.scatter(reduced_X[reduced_X['Clusters'] == 0].loc[:,'PCA1'],reduced_X[reduced_X['Clusters'] == 0].loc[:,'PCA2'],
+color='slateblue')
+plt.scatter(reduced_X[reduced_X['Clusters'] == 1].loc[:,'PCA1'],reduced_X[reduced_X['Clusters'] == 1].loc[:,'PCA2'],
+color='springgreen')
+plt.scatter(reduced_X[reduced_X['Clusters'] == 2].loc[:,'PCA1'],reduced_X[reduced_X['Clusters'] == 2].loc[:,'PCA2'],
+color='indigo')
+plt.scatter(reduced_centers[:,0],reduced_centers[:,1],color='black',marker='x',s=300)
+---------------
+
