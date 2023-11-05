@@ -1,0 +1,264 @@
+1. Write a program non-recursive and recursive program to calculate Fibonacci numbers and 
+analyse their time and space complexity.
+
+#include <iostream>
+using namespace std;
+
+long long fibonacciNonRecursive(int n) {
+    if (n <= 1) {
+        return n;
+    }
+
+    long long prev = 0, current = 1;
+    for (int i = 2; i <= n; i++) {
+        long long next = prev + current;
+        prev = current;
+        current = next;
+    }
+    return current;
+}
+
+
+long long fibonacciRecursive(int n) {
+    if (n <= 1) {
+        return n;
+    }
+    return fibonacciRecursive(n - 1) + fibonacciRecursive(n - 2);
+}
+
+int main() {
+    int n;
+    cout << "Enter the value of n: ";
+    cin >> n;
+
+    // long long result = fibonacciNonRecursive(n);
+    // cout << "Fibonacci by non recursion of(" << n << ") = " << result << endl;
+
+    long long result = fibonacciRecursive(n);
+    cout << "Fibonacci by recursion of (" << n << ") = " << result << endl;
+    return 0;
+}
+
+
+Space complexity:
+
+Non-recursive: O(1)
+Recursive: O(n)
+Time complexity:
+
+Non-recursive: O(n)
+Recursive: O(2^n)
+--------------------------------------------------------------
+
+2. Write a program to solve a fractional Knapsack problem using a greedy method
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+struct Item {
+    int profit, weight;
+
+    Item(int profit, int weight) : profit(profit), weight(weight) {}
+};
+
+bool compareItems(const Item& a, const Item& b) {
+    double ratioA = static_cast<double>(a.profit) / a.weight;
+    double ratioB = static_cast<double>(b.profit) / b.weight;
+    return ratioA > ratioB;
+}
+
+double fractionalKnapsack(int W, const vector<Item>& items) {
+    double finalValue = 0.0;
+
+    vector<Item> sortedItems = items;
+    sort(sortedItems.begin(), sortedItems.end(), compareItems);
+
+    for (const Item& item : sortedItems) {
+        if (item.weight <= W) {
+            W -= item.weight;
+            finalValue += item.profit;
+        } else {
+            finalValue += item.profit * (static_cast<double>(W) / item.weight);
+            break;
+        }
+    }
+
+    return finalValue;
+}
+
+int main() {
+    int W = 50;
+    vector<Item> items = { { 60, 10 }, { 100, 20 }, { 120, 30 } };
+
+    double result = fractionalKnapsack(W, items);
+    cout << "Maximum value for the Knapsack: " << result << endl;
+
+    return 0;
+}
+
+---------------------------------------------------------------
+
+3. Write a program to solve a 0-1 Knapsack problem using dynamic programming or branch and 
+bound strategy.
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+class Knapsack {
+public:
+    int maxWeight;
+    vector<int> values;
+    vector<int> weights;
+
+    Knapsack(int maxWeight, const vector<int>& values, const vector<int>& weights)
+        : maxWeight(maxWeight), values(values), weights(weights) {}
+
+    int solve() {
+        int n = values.size();
+        vector<vector<int>> dp(n + 1, vector<int>(maxWeight + 1, 0));
+
+        for (int i = 1; i <= n; i++) {
+            for (int w = 0; w <= maxWeight; w++) {
+                if (weights[i - 1] <= w) {
+                    dp[i][w] = max(dp[i - 1][w], dp[i - 1][w - weights[i - 1]] + values[i - 1]);
+                } else {
+                    dp[i][w] = dp[i - 1][w];
+                }
+            }
+        }
+
+        return dp[n][maxWeight];
+    }
+};
+
+int main() {
+    int maxWeight = 50;
+    vector<int> values = {60, 100, 120};
+    vector<int> weights = {10, 20, 30};
+
+    Knapsack knapsack(maxWeight, values, weights);
+    int result = knapsack.solve();
+
+    cout << "Maximum value for the Knapsack: " << result << endl;
+
+    return 0;
+}
+
+
+---------------------------------------------------------------------------
+
+4. Design n-Queens matrix having first Queen placed. Use backtracking to place remaining 
+Queens to generate the final n-queen‘s matrix
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+const int N = 4;
+
+void printSolution(const vector<vector<int>>& board) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++)
+            cout << (board[i][j] ? "Q " : ". ");
+        cout << "\n";
+    }
+}
+
+bool isSafe(const vector<vector<int>>& board, int row, int col) {
+    for (int i = 0; i < col; i++) {
+        if (board[row][i]) return false;
+        for (int j = row, k = i; j >= 0 && k >= 0; j--, k--)
+            if (board[j][k]) return false;
+        for (int j = row, k = i; k >= 0 && j < N; j++, k--)
+            if (board[j][k]) return false;
+    }
+    return true;
+}
+
+bool solveNQUtil(vector<vector<int>>& board, int col) {
+    if (col >= N) return true;
+    for (int i = 0; i < N; i++) {
+        if (isSafe(board, i, col)) {
+            board[i][col] = 1;
+            if (solveNQUtil(board, col + 1)) return true;
+            board[i][col] = 0;  // BACKTRACK
+        }
+    }
+    return false;
+}
+
+bool solveNQ() {
+    vector<vector<int>> board(N, vector<int>(N, 0));
+    if (!solveNQUtil(board, 0)) {
+        cout << "Solution does not exist";
+        return false;
+    }
+    printSolution(board);
+    return true;
+}
+
+int main() {
+    solveNQ();
+    return 0;
+}
+
+-----------------------------------------------------------------------------
+
+5. Write a program for analysis of quick sort by using deterministic and randomized variant
+
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+
+int partition(int arr[], int low, int high) {
+    int pivot = arr[high];
+    int i = low - 1;
+
+    for (int j = low; j <= high - 1; j++) {
+        if (arr[j] <= pivot) {
+            i++;
+            swap(arr[i], arr[j]);
+        }
+    }
+    swap(arr[i + 1], arr[high]);
+    return i + 1;
+}
+
+int partition_r(int arr[], int low, int high) {
+    srand(time(NULL));
+    int random = low + rand() % (high - low + 1);
+    swap(arr[random], arr[high]);
+    return partition(arr, low, high);
+}
+
+void quickSort(int arr[], int low, int high) {
+    if (low < high) {
+        int pi = partition_r(arr, low, high);
+        quickSort(arr, low, pi - 1);
+        quickSort(arr, pi + 1, high);
+    }
+}
+
+void printArray(int arr[], int size) {
+    for (int i = 0; i < size; i++)
+        cout << arr[i] << " ";
+    cout << endl;
+}
+
+int main() {
+    int arr[] = {10, 7, 8, 9, 1, 5};
+    int n = sizeof(arr) / sizeof(arr[0]);
+    quickSort(arr, 0, n - 1);
+    cout << "Sorted array: " << endl;
+    printArray(arr, n);
+    return 0;
+}
+
